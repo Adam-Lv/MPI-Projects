@@ -1,0 +1,68 @@
+version: "3.2"
+services:
+  h01:
+    image: adamlv/mpi-dev-image:1.1.0
+    env_file:
+      - .env
+    hostname: h01
+    container_name: h01
+    restart: always
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/project
+    networks:
+      - mpi
+
+  h02:
+    image: adamlv/mpi-dev-image:1.1.0
+    env_file:
+      - .env
+    hostname: h02
+    container_name: h02
+    restart: always
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/project
+    links:
+      - h01
+    networks:
+      - mpi
+
+  h03:
+    image: adamlv/mpi-dev-image:1.1.0
+    env_file:
+      - .env
+    hostname: h03
+    container_name: h03
+    restart: always
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/project
+    links:
+      - h01
+    networks:
+      - mpi
+
+  h04:
+    image: adamlv/mpi-dev-image:1.1.0
+    env_file:
+      - .env
+    hostname: h04
+    container_name: h04
+    restart: always
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/project
+    links:
+      - h01
+    networks:
+      - mpi
+
+
+networks:
+  mpi:
+    driver: bridge
