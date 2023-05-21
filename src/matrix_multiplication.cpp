@@ -61,8 +61,8 @@ void MatrixMultiplication::sendBlock(int dst_rank, const vector<int> &location, 
               dst_rank, tag, MPI_COMM_WORLD, &request);
 }
 
-MPI_Request *MatrixMultiplication::sendBlock(int dst_rank, Tag tag, squareMatrixInt &matrix) const {
-    auto request = new MPI_Request;
+MPI_Request MatrixMultiplication::sendBlock(int dst_rank, Tag tag, squareMatrixInt &matrix) const {
+    MPI_Request request;
     vector<int> send_buffer(b_size * b_size);
     int k = 0;
     for (int i = 0; i < b_size; i++) {
@@ -71,14 +71,14 @@ MPI_Request *MatrixMultiplication::sendBlock(int dst_rank, Tag tag, squareMatrix
         }
     }
     MPI_Isend(send_buffer.data(), b_size * b_size, MPI_INT,
-              dst_rank, tag, MPI_COMM_WORLD, request);
+              dst_rank, tag, MPI_COMM_WORLD, &request);
     return request;
 }
 
-MPI_Request *MatrixMultiplication::receiveBlock(int src_rank, Tag tag, vector<int> &buffer) {
-    auto request = new MPI_Request;
+MPI_Request MatrixMultiplication::receiveBlock(int src_rank, Tag tag, vector<int> &buffer) {
+    MPI_Request request;
     MPI_Irecv(buffer.data(), (int) buffer.size(), MPI_INT,
-              src_rank, tag, MPI_COMM_WORLD, request);
+              src_rank, tag, MPI_COMM_WORLD, &request);
     return request;
 }
 
@@ -94,6 +94,17 @@ void MatrixMultiplication::calculation_init() {
                 mB[i][j] = B[i][j];
             }
         }
+//        cout << "A = ";
+//        print_matrix(A);
+//        cout << "B = ";
+//        print_matrix(B);
+//        cout << "-------------------------------------------------------------\n";
+//        cout << "Initialization result:\n";
+//        cout << "Rank 0:\nmA = ";
+//        print_matrix(mA);
+//        cout << "mB = ";
+//        print_matrix(mB);
+
         // 接收rank初始应获得的数据块坐标
         vector<int> block_tag(2);
         // 块在矩阵中左上角和右下角点的坐标
@@ -138,6 +149,10 @@ void MatrixMultiplication::calculation_init() {
             mA[j][k] = r_bufferA[i];
             mB[j][k] = r_bufferB[i];
         }
+//        cout << "Rank " << rank << ":\nmA = ";
+//        print_matrix(mA);
+//        cout << "mB = ";
+//        print_matrix(mB);
     }
 }
 
@@ -145,14 +160,15 @@ void MatrixMultiplication::calculation_execute() {
     // 移动的次数
     int count = num_of_process_per_side - 1;
     int buffer_size = b_size * b_size;
-    MPI_Request *ASrequest, *ARrequest, *BSrequest, *BRrequest;
-    MPI_Status status;
+    MPI_Request requestArray[4];
+    MPI_Status statusArray[4];
     vector<int> r_bufferA(buffer_size), r_bufferB(buffer_size);
     while (count--) {
-        ASrequest = sendBlock(A_dst_rank, tagA, mA);
-        BSrequest = sendBlock(B_dst_rank, tagB, mB);
-        ARrequest = receiveBlock(A_src_rank, tagA, r_bufferA);
-        BRrequest = receiveBlock(B_src_rank, tagB, r_bufferB);
+
+        requestArray[0] = receiveBlock(A_src_rank, tagA, r_bufferA);
+        requestArray[1] = receiveBlock(B_src_rank, tagB, r_bufferB);
+        requestArray[2] = sendBlock(A_dst_rank, tagA, mA);
+        requestArray[3] = sendBlock(B_dst_rank, tagB, mB);
         // 计算mC = mA * mB
         for (int i = 0; i < b_size; i++) {
             for (int j = 0; j < b_size; j++) {
@@ -162,10 +178,7 @@ void MatrixMultiplication::calculation_execute() {
             }
         }
         // 等待发送接收完毕
-        MPI_Wait(ASrequest, &status);
-        MPI_Wait(ARrequest, &status);
-        MPI_Wait(BSrequest, &status);
-        MPI_Wait(BRrequest, &status);
+        MPI_Waitall(4, requestArray, statusArray);
         // 将收到的数据存入mA, mB以进行下一次计算
         for (int i = 0; i < buffer_size; i++) {
             int j = i / b_size;
@@ -173,10 +186,11 @@ void MatrixMultiplication::calculation_execute() {
             mA[j][k] = r_bufferA[i];
             mB[j][k] = r_bufferB[i];
         }
-        delete ASrequest;
-        delete BSrequest;
-        delete ARrequest;
-        delete BRrequest;
+//        cout << "-------------------------------------------------------------\n";
+//        cout << "Iteration " << num_of_process_per_side - count - 1 <<": rank " << rank << " received mA and mB:\nmA = ";
+//        print_matrix(mA);
+//        cout << "mB = ";
+//        print_matrix(mB);
     }
 }
 
@@ -192,8 +206,7 @@ void MatrixMultiplication::calculation_gather() {
     if (rank != 0) {
         auto request = sendBlock(0, tagC, mC);
         MPI_Status status;
-        MPI_Wait(request, &status);
-        delete request;
+        MPI_Wait(&request, &status);
     } else {
         // 先把自己的mC放进C
         for (int i = 0; i < b_size; i++) {
@@ -203,7 +216,7 @@ void MatrixMultiplication::calculation_gather() {
         }
         // 接收其他进程发送的结果
         MPI_Status status;
-        vector<MPI_Request *> requestList(size - 1, nullptr);
+        vector<MPI_Request> requestList(size - 1, nullptr);
         vector<vector<int>> bufferList(size - 1, vector<int>(b_size * b_size));
         for (int src_rank = 1; src_rank < size; src_rank++) {
             auto request = receiveBlock(src_rank, tagC, bufferList[src_rank - 1]);
@@ -211,7 +224,7 @@ void MatrixMultiplication::calculation_gather() {
         }
         // 等待接收完毕
         for (auto request: requestList) {
-            MPI_Wait(request, &status);
+            MPI_Wait(&request, &status);
         }
         int count = 1;
         vector<int> location(4);

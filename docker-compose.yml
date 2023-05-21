@@ -1,7 +1,7 @@
 version: "3.2"
 services:
   h01:
-    image: adamlv/mpi-dev-image:1.1.0
+    image: adamlv/mpi-dev-image:1.1.1
     env_file:
       - .env
     hostname: h01
@@ -15,7 +15,7 @@ services:
       - mpi
 
   h02:
-    image: adamlv/mpi-dev-image:1.1.0
+    image: adamlv/mpi-dev-image:1.1.1
     env_file:
       - .env
     hostname: h02
@@ -31,7 +31,7 @@ services:
       - mpi
 
   h03:
-    image: adamlv/mpi-dev-image:1.1.0
+    image: adamlv/mpi-dev-image:1.1.1
     env_file:
       - .env
     hostname: h03
@@ -47,7 +47,7 @@ services:
       - mpi
 
   h04:
-    image: adamlv/mpi-dev-image:1.1.0
+    image: adamlv/mpi-dev-image:1.1.1
     env_file:
       - .env
     hostname: h04

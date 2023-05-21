@@ -154,20 +154,18 @@ private:
      * @param dst_rank 目标进程号
      * @param tag 发送消息的标签，用于区分发送的是矩阵mA（tagA）、矩阵mB（tagB）还是矩阵mC（tagC）
      * @param matrix 要发送的矩阵变量的引用
-     * @return 堆区request变量，可以用于后续进行消息同步。
-     * @attention 返回变量为堆区变量，若后续不再使用请用delete销毁以防止内存泄露
+     * @return request变量，可以用于后续进行消息同步。
      */
-    MPI_Request *sendBlock(int dst_rank, Tag tag, squareMatrixInt &matrix) const;
+    MPI_Request sendBlock(int dst_rank, Tag tag, squareMatrixInt &matrix) const;
 
     /**
      * @brief 用于所有阶段接收由sendBlock发送的矩阵块内容，注意，接收内容为一维vector
      * @param src_rank 消息源进程号
      * @param tag 接收消息的标签，用于区分接收的是矩阵mA（tagA）、矩阵mB（tagB）还是矩阵mC（tagC）
      * @param buffer 用于存储接收到的数据的临时数据缓冲区
-     * @return 堆区request变量，可以用于后续进行消息同步。
-     * @attention 返回变量为堆区变量，若后续不再使用请用delete销毁以防止内存泄露
+     * @return request变量，可以用于后续进行消息同步。
      */
-    static MPI_Request *receiveBlock(int src_rank, Tag tag, vector<int> &buffer);
+    static MPI_Request receiveBlock(int src_rank, Tag tag, vector<int> &buffer);
 };
 
 #endif //MPI_MATRIX_MULTIPLICATION_H
